@@ -27,11 +27,20 @@ type AdviceData = {
   };
 };
 interface SuccessResponse {
-  message: string;
+  slips: [
+    {
+      slip: {
+        advice: string;
+      };
+    }
+  ];
 }
 
 interface ErrorResponse {
-  error: string;
+  message: {
+    type: string;
+    text: string;
+  };
 }
 
 type ApiResponse = SuccessResponse | ErrorResponse;
@@ -46,16 +55,21 @@ export default function Home() {
         const response = await fetch("https://api.adviceslip.com/advice");
         const data: AdviceData = await response.json();
         setAdvice(data.slip.advice);
+      } else {
+        const response = await fetch(
+          `https://api.adviceslip.com/advice/search/${searchTerm}`
+        );
+        const data: ApiResponse = await response.json();
+        if ("message" in data) {
+          console.log(data.message.text);
+        } else {
+          setAdvice(data.slips[0].slip?.advice);
+          console.log(data);
+        }
       }
-      const response = await fetch(
-        `https://api.adviceslip.com/advice/search/${searchTerm}`
-      );
-      const data: ApiResponse = await response.json();
-      setAdvice(data);
-      console.log(data);
     }
     fetchData();
-  }, []);
+  }, [searchTerm, advice]);
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log(searchTerm);
