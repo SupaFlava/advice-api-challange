@@ -13,7 +13,12 @@ const StyledBtn = styled.button`
 type Props = {
   children: string;
   type?: "button" | "submit" | "reset";
+  onClick: () => void;
 };
-export default function StyledButton({ children, type }: Props) {
-  return <StyledBtn type={type}>{children}</StyledBtn>;
+export default function StyledButton({ children, type, onClick }: Props) {
+  return (
+    <StyledBtn type={type} onClick={onClick}>
+      {children}
+    </StyledBtn>
+  );
 }

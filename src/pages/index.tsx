@@ -1,4 +1,5 @@
 "use client";
+import axios from "axios";
 
 import Head from "next/head";
 import { Inter } from "next/font/google";
@@ -8,8 +9,19 @@ import styled, { ThemeProvider } from "styled-components";
 import { useEffect, useState } from "react";
 import { GlobalStyles } from "@/styles/global";
 import { theme } from "@/styles/theme";
+import { getAdvice } from "./api/hello";
 const inter = Inter({ subsets: ["latin"] });
 
+const localData = [
+  "Cheese",
+  "love",
+  "friends",
+  "sleep",
+  "food",
+  "spiders",
+  "work",
+  "regret",
+];
 const SearchBox = styled.input`
   width: 180px;
   height: 40px;
@@ -20,60 +32,56 @@ const SearchBox = styled.input`
   border: none;
 `;
 
-type AdviceData = {
-  slip: {
-    id: number;
-    advice: string;
-  };
-};
-interface SuccessResponse {
-  slips: [
-    {
-      slip: {
-        advice: string;
-      };
-    }
-  ];
-}
-
-interface ErrorResponse {
-  message: {
-    type: string;
-    text: string;
-  };
-}
-
-type ApiResponse = SuccessResponse | ErrorResponse;
-
 export default function Home() {
-  const [advice, setAdvice] = useState<string>("");
+  const [advice, setAdvice] = useState<[]>([]);
+  const [searchedAdvice, setSearchedAdvice] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
     async function fetchData() {
-      if (!searchTerm) {
-        const response = await fetch("https://api.adviceslip.com/advice");
-        const data: AdviceData = await response.json();
-        setAdvice(data.slip.advice);
-      } else {
-        const response = await fetch(
-          `https://api.adviceslip.com/advice/search/${searchTerm}`
-        );
-        const data: ApiResponse = await response.json();
-        if ("message" in data) {
-          console.log(data.message.text);
-        } else {
-          setAdvice(data.slips[0].slip?.advice);
-          console.log(data);
-        }
-      }
+      const response = await axios.get("https://api.adviceslip.com/advice");
+      setAdvice(response.data.slip.advice);
     }
     fetchData();
-  }, [searchTerm, advice]);
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+  }, [advice]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function getSearched() {
+      try {
+        const response = await axios.get(
+          `https://api.adviceslip.com/advice/search/${searchTerm}`,
+          {
+            signal: controller.signal,
+          }
+        );
+        console.log(response);
+        if ("message" in response.data) {
+          setSearchedAdvice(response.data.message.text);
+        } else {
+          console.log(response);
+          setSearchedAdvice(response.data.slips[0].advice);
+          console.log("in else sucess", searchedAdvice);
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    getSearched();
+    return () => {
+      controller.abort();
+    };
+  }, [searchedAdvice, searchTerm]);
+
+  const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log(searchTerm);
+    setSearchTerm(e.currentTarget.search.value);
   };
+  async function getLocalData(data: string) {
+    console.log("click");
+    setSearchTerm(data);
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -89,28 +97,22 @@ export default function Home() {
       <div>
         <h1>Solid advice</h1>
         <StyledBtnContainer>
-          <StyledButton>Cheese</StyledButton>
-          <StyledButton>Love</StyledButton>
-          <StyledButton>Friends</StyledButton>
-          <StyledButton>Sleep</StyledButton>
-          <StyledButton>Food</StyledButton>
-          <StyledButton>Spriders</StyledButton>
-          <StyledButton>work</StyledButton>
-          <StyledButton>Regret</StyledButton>
+          {localData.map((localD) => {
+            return (
+              <StyledButton onClick={() => getLocalData(localD)} key={localD}>
+                {localD}
+              </StyledButton>
+            );
+          })}
         </StyledBtnContainer>
         <div>
           <form onSubmit={handleSearch}>
             <label htmlFor="search">Search for Advice:</label>
-            <SearchBox
-              type="text"
-              name="search"
-              id="search"
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <StyledButton type="submit">search</StyledButton>
+            <input type="text" name="search" id="search" />
+            <button type="submit">search</button>
           </form>
         </div>
-        <h1>{advice}</h1>
+        {!searchedAdvice ? <h1>{advice}</h1> : <h1>{searchedAdvice}</h1>}
       </div>
     </ThemeProvider>
   );
